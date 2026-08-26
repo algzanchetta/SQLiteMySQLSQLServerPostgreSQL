@@ -1,0 +1,15 @@
+Esse é o TechFit Academy - um sistema fictício de gestão de academias que eu criei para esse projeto.
+Ele tem 4 módulos principais:
+
+Módulo 1 - Núcleo:
+Alunos, planos, matrículas e pagamentos. É o coração do sistema.
+
+Módulo 2 - Operacional:
+Instrutores, modalidades, aulas e inscrições. Controla toda a parte de aulas.
+
+Módulo 3 - E-commerce:
+Produtos, pedidos e itens. Para vender suplementos e acessórios.
+
+Módulo 4 - App Mobile:
+Treinos e exercícios. Para sincronizar com um app de treinos.
+Isso aqui é um sistema REAL que você poderia vender para uma academia. E vamos criar do zero agora!

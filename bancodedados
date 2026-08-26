@@ -1,0 +1,11 @@
+MySQL:
+Ótimo para web, PHP, projetos rápidos. É o mais popular.
+
+PostgreSQL:
+Melhor para analytics, dados complexos, GIS. Mais robusto.
+
+SQL Server:
+Corporativo, integração com .NET, empresas grandes.
+
+SQLite:
+Apps mobile, desktop, testes. Super leve, não precisa de servidor.

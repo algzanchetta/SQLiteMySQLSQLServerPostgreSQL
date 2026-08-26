@@ -1,0 +1,17 @@
+MySQL vs PostgreSQL:
+- AUTO_INCREMENT → SERIAL
+- ENUM → VARCHAR + CHECK constraint
+- TIMESTAMP → TIMESTAMPTZ (com timezone)
+- ENGINE=InnoDB → não precisa (padrão)
+
+MySQL vs SQL Server:
+- AUTO_INCREMENT → IDENTITY(1,1)
+- VARCHAR → NVARCHAR (Unicode)
+- TIMESTAMP → DATETIME2
+- ENUM → VARCHAR + CHECK
+
+SQLite:
+- Mais simples ainda
+- Sem ENUM (usa TEXT)
+- Sem FOREIGN KEY enforcement por padrão
+- Perfeito para apps mobile
