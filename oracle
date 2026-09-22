@@ -1,0 +1,482 @@
+-- ============================================
+-- TECHFIT ACADEMY - ORACLE DATABASE
+-- Script Completo para Oracle Live SQL
+-- ============================================
+
+-- NOTA: No Oracle Live SQL, você já está no seu Schema.
+-- Não precisa de CREATE DATABASE nem USE.
+
+-- ============================================
+-- MÓDULO 1: NÚCLEO (Clientes e Planos)
+-- ============================================
+
+CREATE TABLE planos (
+    id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    nome VARCHAR2(100) NOT NULL,
+    descricao CLOB,
+    preco_mensal NUMBER(10, 2) NOT NULL,
+    duracao_meses NUMBER DEFAULT 1,
+    beneficios CLOB,
+    status VARCHAR2(20) DEFAULT 'ativo' CHECK (status IN ('ativo', 'inativo')),
+    created_at TIMESTAMP DEFAULT SYSDATE,
+    updated_at TIMESTAMP DEFAULT SYSDATE,
+    deleted_at TIMESTAMP
+);
+
+CREATE INDEX idx_planos_status ON planos(status);
+
+CREATE TABLE alunos (
+    id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    nome VARCHAR2(200) NOT NULL,
+    email VARCHAR2(200) UNIQUE NOT NULL,
+    telefone VARCHAR2(20),
+    data_nascimento DATE,
+    cpf VARCHAR2(11) UNIQUE,
+    endereco CLOB,
+    data_cadastro TIMESTAMP DEFAULT SYSDATE,
+    status VARCHAR2(20) DEFAULT 'ativa' CHECK (status IN ('ativa', 'inativa', 'suspenso')),
+    created_at TIMESTAMP DEFAULT SYSDATE,
+    updated_at TIMESTAMP DEFAULT SYSDATE,
+    deleted_at TIMESTAMP
+);
+
+CREATE INDEX idx_alunos_email ON alunos(email);
+CREATE INDEX idx_alunos_cpf ON alunos(cpf);
+CREATE INDEX idx_alunos_status ON alunos(status);
+
+CREATE TABLE matriculas (
+    id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    aluno_id NUMBER NOT NULL REFERENCES alunos(id),
+    plano_id NUMBER NOT NULL REFERENCES planos(id),
+    data_inicio DATE NOT NULL,
+    data_fim DATE NOT NULL,
+    valor_total NUMBER(10, 2) NOT NULL,
+    status VARCHAR2(20) DEFAULT 'ativa' CHECK (status IN ('ativa', 'cancelada', 'expirada')),
+    observacoes CLOB,
+    created_at TIMESTAMP DEFAULT SYSDATE,
+    updated_at TIMESTAMP DEFAULT SYSDATE,
+    deleted_at TIMESTAMP
+);
+
+CREATE INDEX idx_matriculas_aluno ON matriculas(aluno_id);
+CREATE INDEX idx_matriculas_plano ON matriculas(plano_id);
+CREATE INDEX idx_matriculas_status ON matriculas(status);
+
+CREATE TABLE pagamentos (
+    id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    matricula_id NUMBER NOT NULL REFERENCES matriculas(id),
+    valor NUMBER(10, 2) NOT NULL,
+    data_pagamento DATE,
+    data_vencimento DATE NOT NULL,
+    forma_pagamento VARCHAR2(20) CHECK (forma_pagamento IN ('dinheiro', 'cartao', 'pix', 'boleto')),
+    status VARCHAR2(20) DEFAULT 'pendente' CHECK (status IN ('pendente', 'pago', 'atrasado', 'cancelado')),
+    observacoes CLOB,
+    created_at TIMESTAMP DEFAULT SYSDATE,
+    updated_at TIMESTAMP DEFAULT SYSDATE,
+    deleted_at TIMESTAMP
+);
+
+CREATE INDEX idx_pagamentos_matricula ON pagamentos(matricula_id);
+CREATE INDEX idx_pagamentos_status ON pagamentos(status);
+CREATE INDEX idx_pagamentos_vencimento ON pagamentos(data_vencimento);
+
+-- ============================================
+-- MÓDULO 2: OPERACIONAL (Aulas e Equipe)
+-- ============================================
+
+CREATE TABLE instrutores (
+    id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    nome VARCHAR2(200) NOT NULL,
+    email VARCHAR2(200) UNIQUE NOT NULL,
+    telefone VARCHAR2(20),
+    especialidade VARCHAR2(100),
+    salario_base NUMBER(10, 2),
+    data_contratacao DATE,
+    status VARCHAR2(20) DEFAULT 'ativo' CHECK (status IN ('ativo', 'inativo')),
+    created_at TIMESTAMP DEFAULT SYSDATE,
+    updated_at TIMESTAMP DEFAULT SYSDATE,
+    deleted_at TIMESTAMP
+);
+
+CREATE INDEX idx_instrutores_email ON instrutores(email);
+CREATE INDEX idx_instrutores_status ON instrutores(status);
+
+CREATE TABLE modalidades (
+    id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    nome VARCHAR2(100) NOT NULL,
+    descricao CLOB,
+    duracao_minutos NUMBER DEFAULT 60,
+    nivel_dificuldade VARCHAR2(20) CHECK (nivel_dificuldade IN ('iniciante', 'intermediario', 'avancado')),
+    created_at TIMESTAMP DEFAULT SYSDATE,
+    updated_at TIMESTAMP DEFAULT SYSDATE,
+    deleted_at TIMESTAMP
+);
+
+CREATE TABLE aulas (
+    id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    modalidade_id NUMBER NOT NULL REFERENCES modalidades(id),
+    instrutor_id NUMBER NOT NULL REFERENCES instrutores(id),
+    data_hora TIMESTAMP NOT NULL,
+    sala VARCHAR2(50),
+    vagas_totais NUMBER DEFAULT 20,
+    vagas_ocupadas NUMBER DEFAULT 0,
+    status VARCHAR2(20) DEFAULT 'agendada' CHECK (status IN ('agendada', 'cancelada', 'realizada')),
+    created_at TIMESTAMP DEFAULT SYSDATE,
+    updated_at TIMESTAMP DEFAULT SYSDATE,
+    deleted_at TIMESTAMP
+);
+
+CREATE INDEX idx_aulas_data ON aulas(data_hora);
+CREATE INDEX idx_aulas_instrutor ON aulas(instrutor_id);
+CREATE INDEX idx_aulas_status ON aulas(status);
+
+CREATE TABLE inscricoes_aula (
+    id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    aula_id NUMBER NOT NULL REFERENCES aulas(id),
+    aluno_id NUMBER NOT NULL REFERENCES alunos(id),
+    data_inscricao TIMESTAMP DEFAULT SYSDATE,
+    status_presenca VARCHAR2(20) DEFAULT 'inscrito' CHECK (status_presenca IN ('inscrito', 'presente', 'ausente', 'cancelado')),
+    created_at TIMESTAMP DEFAULT SYSDATE,
+    updated_at TIMESTAMP DEFAULT SYSDATE,
+    deleted_at TIMESTAMP,
+    CONSTRAINT unique_aula_aluno UNIQUE (aula_id, aluno_id)
+);
+
+CREATE INDEX idx_inscricoes_aula ON inscricoes_aula(aula_id);
+CREATE INDEX idx_inscricoes_aluno ON inscricoes_aula(aluno_id);
+
+-- ============================================
+-- MÓDULO 3: E-COMMERCE (Loja)
+-- ============================================
+
+CREATE TABLE produtos (
+    id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    nome VARCHAR2(200) NOT NULL,
+    descricao CLOB,
+    categoria VARCHAR2(20) CHECK (categoria IN ('suplemento', 'roupa', 'acessorio', 'equipamento')),
+    preco NUMBER(10, 2) NOT NULL,
+    estoque NUMBER DEFAULT 0,
+    estoque_minimo NUMBER DEFAULT 5,
+    imagem_url VARCHAR2(500),
+    status VARCHAR2(20) DEFAULT 'ativo' CHECK (status IN ('ativo', 'inativo')),
+    created_at TIMESTAMP DEFAULT SYSDATE,
+    updated_at TIMESTAMP DEFAULT SYSDATE,
+    deleted_at TIMESTAMP
+);
+
+CREATE INDEX idx_produtos_categoria ON produtos(categoria);
+CREATE INDEX idx_produtos_status ON produtos(status);
+
+CREATE TABLE pedidos (
+    id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    aluno_id NUMBER NOT NULL REFERENCES alunos(id),
+    data_pedido TIMESTAMP DEFAULT SYSDATE,
+    valor_total NUMBER(10, 2) NOT NULL,
+    forma_pagamento VARCHAR2(20) CHECK (forma_pagamento IN ('dinheiro', 'cartao', 'pix', 'boleto')),
+    status VARCHAR2(20) DEFAULT 'pendente' CHECK (status IN ('pendente', 'pago', 'enviado', 'entregue', 'cancelado')),
+    observacoes CLOB,
+    created_at TIMESTAMP DEFAULT SYSDATE,
+    updated_at TIMESTAMP DEFAULT SYSDATE,
+    deleted_at TIMESTAMP
+);
+
+CREATE INDEX idx_pedidos_aluno ON pedidos(aluno_id);
+CREATE INDEX idx_pedidos_status ON pedidos(status);
+
+CREATE TABLE itens_pedido (
+    id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    pedido_id NUMBER NOT NULL REFERENCES pedidos(id),
+    produto_id NUMBER NOT NULL REFERENCES produtos(id),
+    quantidade NUMBER NOT NULL,
+    preco_unitario NUMBER(10, 2) NOT NULL,
+    subtotal NUMBER(10, 2) NOT NULL,
+    created_at TIMESTAMP DEFAULT SYSDATE,
+    updated_at TIMESTAMP DEFAULT SYSDATE,
+    deleted_at TIMESTAMP
+);
+
+CREATE INDEX idx_itens_pedido ON itens_pedido(pedido_id);
+CREATE INDEX idx_itens_produto ON itens_pedido(produto_id);
+
+-- ============================================
+-- MÓDULO 4: APP MOBILE (Treinos)
+-- ============================================
+
+CREATE TABLE exercicios (
+    id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    nome VARCHAR2(100) NOT NULL,
+    grupo_muscular VARCHAR2(50) NOT NULL,
+    descricao CLOB,
+    dificuldade VARCHAR2(20) CHECK (dificuldade IN ('facil', 'medio', 'dificil')),
+    created_at TIMESTAMP DEFAULT SYSDATE,
+    updated_at TIMESTAMP DEFAULT SYSDATE,
+    deleted_at TIMESTAMP
+);
+
+CREATE INDEX idx_exercicios_grupo ON exercicios(grupo_muscular);
+
+CREATE TABLE treinos (
+    id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    aluno_id NUMBER NOT NULL REFERENCES alunos(id),
+    data_treino DATE NOT NULL,
+    duracao_minutos NUMBER,
+    calorias_queimadas NUMBER,
+    observacoes CLOB,
+    created_at TIMESTAMP DEFAULT SYSDATE,
+    updated_at TIMESTAMP DEFAULT SYSDATE,
+    deleted_at TIMESTAMP
+);
+
+CREATE INDEX idx_treinos_aluno ON treinos(aluno_id);
+CREATE INDEX idx_treinos_data ON treinos(data_treino);
+
+CREATE TABLE treino_exercicios (
+    id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    treino_id NUMBER NOT NULL REFERENCES treinos(id),
+    exercicio_id NUMBER NOT NULL REFERENCES exercicios(id),
+    series NUMBER,
+    repeticoes NUMBER,
+    peso NUMBER(5, 2),
+    tempo_descanso_segundos NUMBER,
+    observacoes CLOB,
+    created_at TIMESTAMP DEFAULT SYSDATE,
+    updated_at TIMESTAMP DEFAULT SYSDATE,
+    deleted_at TIMESTAMP
+);
+
+CREATE INDEX idx_treino_exercicios_treino ON treino_exercicios(treino_id);
+CREATE INDEX idx_treino_exercicios_exercicio ON treino_exercicios(exercicio_id);
+
+-- ============================================
+-- VIEWS
+-- ============================================
+
+CREATE OR REPLACE VIEW vw_alunos_ativos AS
+SELECT 
+    a.id, a.nome, a.email, a.telefone,
+    p.nome AS plano, p.preco_mensal,
+    m.data_inicio, m.data_fim, m.status AS status_matricula
+FROM alunos a
+INNER JOIN matriculas m ON a.id = m.aluno_id
+INNER JOIN planos p ON m.plano_id = p.id
+WHERE m.status = 'ativa' 
+  AND m.deleted_at IS NULL 
+  AND a.deleted_at IS NULL;
+
+CREATE OR REPLACE VIEW vw_pagamentos_atrasados AS
+SELECT 
+    p.id, a.nome AS aluno, a.email, p.valor, p.data_vencimento,
+    (SYSDATE - p.data_vencimento) AS dias_atraso,
+    p.forma_pagamento
+FROM pagamentos p
+INNER JOIN matriculas m ON p.matricula_id = m.id
+INNER JOIN alunos a ON m.aluno_id = a.id
+WHERE p.status = 'pendente' 
+  AND p.data_vencimento < SYSDATE 
+  AND p.deleted_at IS NULL;
+
+-- ============================================
+-- DADOS DE TESTE
+-- ============================================
+
+-- Planos
+INSERT INTO planos (nome, descricao, preco_mensal, duracao_meses, beneficios) VALUES
+('Plano Básico', 'Acesso à musculação e cardio', 99.90, 1, 'Musculação + Cardio + Vestiário');
+
+INSERT INTO planos (nome, descricao, preco_mensal, duracao_meses, beneficios) VALUES
+('Plano Premium', 'Acesso completo à academia', 149.90, 1, 'Musculação + Aulas + Piscina + Sauna');
+
+INSERT INTO planos (nome, descricao, preco_mensal, duracao_meses, beneficios) VALUES
+('Plano Anual', 'Melhor custo-benefício', 1299.00, 12, 'Todos os benefícios + 2 meses grátis');
+
+INSERT INTO planos (nome, descricao, preco_mensal, duracao_meses, beneficios) VALUES
+('Plano Estudante', 'Desconto para estudantes', 79.90, 1, 'Musculação + Cardio (com comprovação)');
+
+INSERT INTO planos (nome, descricao, preco_mensal, duracao_meses, beneficios) VALUES
+('Plano Black', 'Acesso 24h + Personal', 299.90, 1, 'Acesso 24h + 4 aulas de personal/mês');
+
+-- Alunos
+INSERT INTO alunos (nome, email, telefone, data_nascimento, cpf) VALUES
+('João Silva', 'joao.silva@email.com', '11999999999', TO_DATE('1990-05-15', 'YYYY-MM-DD'), '12345678900');
+
+INSERT INTO alunos (nome, email, telefone, data_nascimento, cpf) VALUES
+('Maria Santos', 'maria.santos@email.com', '11888888888', TO_DATE('1985-08-20', 'YYYY-MM-DD'), '98765432100');
+
+INSERT INTO alunos (nome, email, telefone, data_nascimento, cpf) VALUES
+('Pedro Oliveira', 'pedro.oliveira@email.com', '11777777777', TO_DATE('1992-03-10', 'YYYY-MM-DD'), '11122233344');
+
+INSERT INTO alunos (nome, email, telefone, data_nascimento, cpf) VALUES
+('Ana Costa', 'ana.costa@email.com', '11666666666', TO_DATE('1988-11-25', 'YYYY-MM-DD'), '55566677788');
+
+INSERT INTO alunos (nome, email, telefone, data_nascimento, cpf) VALUES
+('Carlos Lima', 'carlos.lima@email.com', '11555555555', TO_DATE('1995-07-30', 'YYYY-MM-DD'), '99988877766');
+
+-- Matrículas
+INSERT INTO matriculas (aluno_id, plano_id, data_inicio, data_fim, valor_total, status) VALUES
+(1, 2, TO_DATE('2024-01-01', 'YYYY-MM-DD'), TO_DATE('2024-12-31', 'YYYY-MM-DD'), 149.90, 'ativa');
+
+INSERT INTO matriculas (aluno_id, plano_id, data_inicio, data_fim, valor_total, status) VALUES
+(2, 3, TO_DATE('2024-01-01', 'YYYY-MM-DD'), TO_DATE('2024-12-31', 'YYYY-MM-DD'), 1299.00, 'ativa');
+
+INSERT INTO matriculas (aluno_id, plano_id, data_inicio, data_fim, valor_total, status) VALUES
+(3, 1, TO_DATE('2024-02-01', 'YYYY-MM-DD'), TO_DATE('2025-01-31', 'YYYY-MM-DD'), 99.90, 'ativa');
+
+INSERT INTO matriculas (aluno_id, plano_id, data_inicio, data_fim, valor_total, status) VALUES
+(4, 4, TO_DATE('2024-03-01', 'YYYY-MM-DD'), TO_DATE('2025-02-28', 'YYYY-MM-DD'), 79.90, 'ativa');
+
+INSERT INTO matriculas (aluno_id, plano_id, data_inicio, data_fim, valor_total, status) VALUES
+(5, 5, TO_DATE('2024-01-15', 'YYYY-MM-DD'), TO_DATE('2025-01-14', 'YYYY-MM-DD'), 299.90, 'ativa');
+
+-- Pagamentos
+INSERT INTO pagamentos (matricula_id, valor, data_vencimento, forma_pagamento, status) VALUES
+(1, 149.90, TO_DATE('2024-01-01', 'YYYY-MM-DD'), 'cartao', 'pago');
+
+INSERT INTO pagamentos (matricula_id, valor, data_vencimento, forma_pagamento, status) VALUES
+(1, 149.90, TO_DATE('2024-02-01', 'YYYY-MM-DD'), 'cartao', 'pago');
+
+INSERT INTO pagamentos (matricula_id, valor, data_vencimento, forma_pagamento, status) VALUES
+(1, 149.90, TO_DATE('2024-03-01', 'YYYY-MM-DD'), 'cartao', 'pendente');
+
+INSERT INTO pagamentos (matricula_id, valor, data_vencimento, forma_pagamento, status) VALUES
+(2, 1299.00, TO_DATE('2024-01-01', 'YYYY-MM-DD'), 'boleto', 'pago');
+
+INSERT INTO pagamentos (matricula_id, valor, data_vencimento, forma_pagamento, status) VALUES
+(3, 99.90, TO_DATE('2024-02-01', 'YYYY-MM-DD'), 'pix', 'pago');
+
+INSERT INTO pagamentos (matricula_id, valor, data_vencimento, forma_pagamento, status) VALUES
+(3, 99.90, TO_DATE('2024-03-01', 'YYYY-MM-DD'), 'pix', 'atrasado');
+
+INSERT INTO pagamentos (matricula_id, valor, data_vencimento, forma_pagamento, status) VALUES
+(4, 79.90, TO_DATE('2024-03-01', 'YYYY-MM-DD'), 'dinheiro', 'pendente');
+
+INSERT INTO pagamentos (matricula_id, valor, data_vencimento, forma_pagamento, status) VALUES
+(5, 299.90, TO_DATE('2024-01-15', 'YYYY-MM-DD'), 'cartao', 'pago');
+
+-- Instrutores
+INSERT INTO instrutores (nome, email, telefone, especialidade, salario_base, data_contratacao) VALUES
+('Roberto Almeida', 'roberto@techfit.com', '11444444444', 'Musculação', 3500.00, TO_DATE('2020-03-15', 'YYYY-MM-DD'));
+
+INSERT INTO instrutores (nome, email, telefone, especialidade, salario_base, data_contratacao) VALUES
+('Fernanda Lima', 'fernanda@techfit.com', '11333333333', 'Yoga', 3000.00, TO_DATE('2021-06-01', 'YYYY-MM-DD'));
+
+INSERT INTO instrutores (nome, email, telefone, especialidade, salario_base, data_contratacao) VALUES
+('Marcos Souza', 'marcos@techfit.com', '11222222222', 'CrossFit', 4000.00, TO_DATE('2019-09-10', 'YYYY-MM-DD'));
+
+INSERT INTO instrutores (nome, email, telefone, especialidade, salario_base, data_contratacao) VALUES
+('Juliana Pereira', 'juliana@techfit.com', '11111111111', 'Pilates', 3200.00, TO_DATE('2022-01-20', 'YYYY-MM-DD'));
+
+-- Modalidades
+INSERT INTO modalidades (nome, descricao, duracao_minutos, nivel_dificuldade) VALUES
+('Musculação', 'Treino de força com pesos', 60, 'intermediario');
+
+INSERT INTO modalidades (nome, descricao, duracao_minutos, nivel_dificuldade) VALUES
+('Yoga', 'Prática de posturas e meditação', 90, 'iniciante');
+
+INSERT INTO modalidades (nome, descricao, duracao_minutos, nivel_dificuldade) VALUES
+('CrossFit', 'Treino funcional de alta intensidade', 60, 'avancado');
+
+INSERT INTO modalidades (nome, descricao, duracao_minutos, nivel_dificuldade) VALUES
+('Pilates', 'Exercícios de fortalecimento e alongamento', 60, 'iniciante');
+
+INSERT INTO modalidades (nome, descricao, duracao_minutos, nivel_dificuldade) VALUES
+('Spinning', 'Aula de bicicleta indoor', 45, 'intermediario');
+
+INSERT INTO modalidades (nome, descricao, duracao_minutos, nivel_dificuldade) VALUES
+('Zumba', 'Dança fitness', 60, 'iniciante');
+
+-- Produtos
+INSERT INTO produtos (nome, categoria, preco, estoque, estoque_minimo) VALUES
+('Whey Protein 1kg', 'suplemento', 149.90, 50, 10);
+
+INSERT INTO produtos (nome, categoria, preco, estoque, estoque_minimo) VALUES
+('Creatina 300g', 'suplemento', 89.90, 30, 5);
+
+INSERT INTO produtos (nome, categoria, preco, estoque, estoque_minimo) VALUES
+('Camiseta Dry Fit', 'roupa', 59.90, 100, 20);
+
+INSERT INTO produtos (nome, categoria, preco, estoque, estoque_minimo) VALUES
+('Shorts Esportivo', 'roupa', 49.90, 80, 15);
+
+INSERT INTO produtos (nome, categoria, preco, estoque, estoque_minimo) VALUES
+('Garrafa Térmica 1L', 'acessorio', 39.90, 60, 10);
+
+INSERT INTO produtos (nome, categoria, preco, estoque, estoque_minimo) VALUES
+('Toalha de Microfibra', 'acessorio', 29.90, 40, 10);
+
+INSERT INTO produtos (nome, categoria, preco, estoque, estoque_minimo) VALUES
+('Halteres 5kg (par)', 'equipamento', 129.90, 20, 5);
+
+-- Exercícios
+INSERT INTO exercicios (nome, grupo_muscular, dificuldade) VALUES
+('Supino Reto', 'peito', 'medio');
+
+INSERT INTO exercicios (nome, grupo_muscular, dificuldade) VALUES
+('Supino Inclinado', 'peito', 'medio');
+
+INSERT INTO exercicios (nome, grupo_muscular, dificuldade) VALUES
+('Crucifixo', 'peito', 'facil');
+
+INSERT INTO exercicios (nome, grupo_muscular, dificuldade) VALUES
+('Agachamento Livre', 'perna', 'avancado');
+
+INSERT INTO exercicios (nome, grupo_muscular, dificuldade) VALUES
+('Leg Press', 'perna', 'facil');
+
+INSERT INTO exercicios (nome, grupo_muscular, dificuldade) VALUES
+('Cadeira Extensora', 'perna', 'facil');
+
+INSERT INTO exercicios (nome, grupo_muscular, dificuldade) VALUES
+('Puxada Aberta', 'costas', 'medio');
+
+INSERT INTO exercicios (nome, grupo_muscular, dificuldade) VALUES
+('Remada Curvada', 'costas', 'medio');
+
+INSERT INTO exercicios (nome, grupo_muscular, dificuldade) VALUES
+('Rosca Direta', 'braco', 'facil');
+
+INSERT INTO exercicios (nome, grupo_muscular, dificuldade) VALUES
+('Rosca Martelo', 'braco', 'facil');
+
+INSERT INTO exercicios (nome, grupo_muscular, dificuldade) VALUES
+('Tríceps Testa', 'braco', 'medio');
+
+INSERT INTO exercicios (nome, grupo_muscular, dificuldade) VALUES
+('Abdominal Supra', 'abdomen', 'facil');
+
+INSERT INTO exercicios (nome, grupo_muscular, dificuldade) VALUES
+('Prancha Isométrica', 'abdomen', 'medio');
+
+-- ============================================
+-- CONSULTAS DE TESTE
+-- ============================================
+
+-- 1. Ver alunos ativos
+SELECT * FROM vw_alunos_ativos;
+
+-- 2. Ver pagamentos atrasados (com cálculo de dias!)
+SELECT * FROM vw_pagamentos_atrasados;
+
+-- 3. A mágica da matemática de datas
+SELECT 
+    nome,
+    created_at,
+    SYSDATE AS hoje,
+    (SYSDATE - created_at) AS dias_desde_criacao
+FROM alunos;
+
+-- 4. Limitar resultados (o "LIMIT" do Oracle)
+SELECT * FROM planos FETCH FIRST 5 ROWS ONLY;
+
+-- 5. Total de alunos por plano
+SELECT 
+    p.nome AS plano,
+    COUNT(m.id) AS total_alunos,
+    SUM(m.valor_total) AS faturamento_total
+FROM planos p
+LEFT JOIN matriculas m ON p.id = m.plano_id AND m.status = 'ativa'
+GROUP BY p.id, p.nome
+ORDER BY total_alunos DESC;
+
+-- 6. A tabela mágica DUAL
+SELECT SYSDATE FROM dual;
+SELECT SYSTIMESTAMP FROM dual;
